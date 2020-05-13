@@ -2,18 +2,11 @@ import os
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# start_config = []
-# with open(os.path.join(ROOT_DIR, 'Start_Configuration.txt')) as file:
-#     for line in file:
-#         start_config.append(line.strip().split('\t'))
-# goal_config = []
-# with open(os.path.join(ROOT_DIR, 'Goal_Configuration.txt')) as file:
-#     for line in file:
-#         goal_config.appned(line.strip().split('\t'))
-
 class Node:
-    def __init__(self,state,level,fval):
+    def __init__(self,state,level,fval,prev, move):
         """ Initialize the node with the data, level of the node and the calculated fvalue """
+        self.prev = prev
+        self.move = move
         self.data = state
         self.level = level
         self.fval = fval
@@ -21,36 +14,41 @@ class Node:
     def generate_child(self):
         """ Generate child nodes from the given node by moving the blank space
         either in the four directions {up,down,left,right} """
+        # print(self.data)
         x1,y1,x2,y2 = self.find(self.data,'-',2)
         """ val_list contains position values for moving the blank space in either of
         the 4 directions [up,down,left,right] respectively. """
         val_list1 = [[x1,y1-1],[x1,y1+1],[x1-1,y1],[x1+1,y1]]
         val_list2 = [[x2,y2-1],[x2,y2+1],[x2-1,y2],[x2+1,y2]]
+        move = ['right', 'left', 'down', 'up']
         children = []
-        for i in val_list1:
-            child = self.swap(self.data,x1,y1,i[0],i[1])
+        for i in range(4):
+            p, q = val_list1[i]
+            child = self.swap(self.data,x1,y1,p,q)
             if child is not None:
-                child_node = Node(child,self.level+1,0)
+                child_node = Node(child,self.level+1,0,self,(self.data[p][q],move[i]))
                 children.append(child_node)
-        for i in val_list2:
-            child = self.swap(self.data,x2,y2,i[0],i[1])
+            p, q = val_list2[i]
+            child = self.swap(self.data,x2,y2,p,q)
             if child is not None:
-                child_node = Node(child,self.level+1,0)
+                child_node = Node(child,self.level+1,0,self,(self.data[p][q],move[i]))
                 children.append(child_node)
+        # print(len(children))
         return children
 
     def swap(self,puz,x1,y1,x2,y2):
         """ Move the blank space in the given direction and if the position value are out
         of limits the return None """
-        if x2 >= 0 and x2 < len(self.data) and y2 >= 0 and y2 < len(self.data):
+        if x2 >= 0 and x2 < len(self.data) and y2 >= 0 and y2 < len(self.data) and puz[x2][y2] != '-':
             temp_puz = []
             temp_puz = self.copy(puz)
             # temp = temp_puz[x2][y2]
+            # temp_puz[x2][y2] = temp_puz[x1][y1]
             temp_puz[x2][y2],temp_puz[x1][y1] = temp_puz[x1][y1],temp_puz[x2][y2]
             # temp_puz[x1][y1] = temp
             return temp_puz
         else:
-         return None
+            return None
 
     def copy(self,root):
         """ Copy function to create a similar matrix of the given node"""
@@ -137,9 +135,12 @@ class Puzzle:
                 if start[i][j] != goal[i][j] and start[i][j] != '-':
                     temp += 1
         return temp
-        
+    
+    def writeLog(self,move):
+        with open(os.path.join(ROOT_DIR, 'Output.txt'),'a+') as file:
+            file.write('{}\n'.format(move))
 
-    def process(self):
+    def travers(self):
         """ Accept Start and Goal Puzzle state"""
         # print("Enter the start state matrix \n")
         # start = self.accept()
@@ -147,34 +148,69 @@ class Puzzle:
         # goal = self.accept()
         start, goal = self.readInputs()
 
-        start = Node(start,0,0)
+        start = Node(start,0,0,None,())
         start.fval = self.f(start,goal, self.heu)
         """ Put the start node in the open list"""
         self.open.append(start)
         # print("\n\n")
-        while True:
+        while len(self.open) > 0:
             cur = self.open[0]
             # print("")
-            print("  | ")
-            print("  | ")
-            print(" \\\'/ \n")
-            for i in cur.data:
-                for j in i:
-                    print(j,end=" ")
-                print("")
+            # print("  | ")
+            # print("  | ")
+            # print(" \\\'/ \n")
+            # for i in cur.data:
+            #     for j in i:
+            #         print(j,end=" ")
+            #     print("")
             """ If the difference between current and goal node is 0 we have reached the goal node"""
             heu = self.h_diff(cur.data,goal) if self.heu == 'diff' else self.h_man(cur.data,goal)
             # print(heu)
             if(heu == 0):
+                self.final_state = cur
                 break
-            for i in cur.generate_child():
+            children = cur.generate_child()
+            for i in children:
                 i.fval = self.f(i,goal, self.heu)
                 self.open.append(i)
             self.closed.append(cur)
             del self.open[0]
             """ sort the opne list based on f value """
             self.open.sort(key = lambda x:x.fval,reverse=False)
+            # self.writeLog(self.open[0][1])
+            # print()
         print('Finished')
+    def printPuzzle(self,data):
+        l = len(data)
+        for row in data:
+            # print(tuple(row))
+            formatted_row = ('%s\t'*l)%tuple(row)
+            print(formatted_row)
+        print()
+
+    def traceback(self):
+        state = self.final_state
+        prev_state = state.prev
+        state_list = [state, prev_state]
+        i = 0
+        while True:
+            i += 1
+            print(i)
+            # print(prev_state.prev)
+            prev_state = prev_state.prev
+            if prev_state == None:
+                print(i*10)
+                break
+            state_list.append(prev_state)
+        
+        state_list = state_list[::-1]
+        # print(state_list)
+        moves = []
+        for state in state_list:
+            moves.append(state.move)
+            self.printPuzzle(state.data)
+        self.writeLog(','.join(map(str, moves[1:])))
 
 puz = Puzzle('man')
-puz.process()
+puz.travers()
+puz.traceback()
