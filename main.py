@@ -1,4 +1,5 @@
 import os
+from queue import PriorityQueue
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -10,6 +11,12 @@ class Node:
         self.data = state
         self.level = level
         self.fval = fval
+    
+    def __gt__(self, other): 
+        if(self.fval>other.fval): 
+            return True
+        else: 
+            return False
     
     def generate_child(self):
         """ Generate child nodes from the given node by moving the blank space
@@ -81,6 +88,7 @@ class Puzzle:
         self.heu = h
         self.open = []
         self.closed = []
+        self.queue = PriorityQueue()
         
     def accept(self):
         """ Accepts the puzzle from the user """
@@ -104,11 +112,10 @@ class Puzzle:
 
     def find(self,puz,x):
         """ Specifically used to find the position of the blank space """
-        val = []
         for i in range(0,len(puz)):
             for j in range(0,len(puz)):
                 if puz[i][j] == x:
-                    return i,j
+                    return (i,j)
 
     def f(self,start,goal,h):
         """ Heuristic Function to calculate hueristic value f(x) = h(x) + g(x) """
@@ -140,6 +147,13 @@ class Puzzle:
         with open(os.path.join(ROOT_DIR, 'Output.txt'),'a+') as file:
             file.write('{}\n'.format(move))
 
+    def to_pq_entry(self, data):
+        """
+            returns the tuple (priority, count, board)
+        """
+        val = int(data.fval)
+        return (val, data)
+
     def travers(self):
         """ Accept Start and Goal Puzzle state"""
         # print("Enter the start state matrix \n")
@@ -147,14 +161,17 @@ class Puzzle:
         # print("Enter the goal state matrix \n")        
         # goal = self.accept()
         start, goal = self.readInputs()
+        # print(start, goal)
 
         start = Node(start,0,0,None,())
         start.fval = self.f(start,goal, self.heu)
         """ Put the start node in the open list"""
         self.open.append(start)
+        self.queue.put(self.to_pq_entry(start))
         # print("\n\n")
-        while len(self.open) > 0:
-            cur = self.open[0]
+        while not self.queue.empty():
+            # cur = self.open[0]
+            cur = self.queue.get()[1]
             # print("")
             # print("  | ")
             # print("  | ")
@@ -173,10 +190,11 @@ class Puzzle:
             for i in children:
                 i.fval = self.f(i,goal, self.heu)
                 self.open.append(i)
+                self.queue.put(self.to_pq_entry(i))
             self.closed.append(cur)
             del self.open[0]
             """ sort the opne list based on f value """
-            self.open.sort(key = lambda x:x.fval,reverse=False)
+            # self.open.sort(key = lambda x:x.fval,reverse=False)
             # self.writeLog(self.open[0][1])
             # print()
         print('Finished')
@@ -192,14 +210,10 @@ class Puzzle:
         state = self.final_state
         prev_state = state.prev
         state_list = [state, prev_state]
-        i = 0
         while True:
-            i += 1
-            print(i)
             # print(prev_state.prev)
             prev_state = prev_state.prev
             if prev_state == None:
-                print(i*10)
                 break
             state_list.append(prev_state)
         
@@ -209,6 +223,8 @@ class Puzzle:
         for state in state_list:
             moves.append(state.move)
             self.printPuzzle(state.data)
+        # self.printPuzzle(state.data)
+        print(','.join(map(str, moves[1:])))
         self.writeLog(','.join(map(str, moves[1:])))
 
 puz = Puzzle('man')
