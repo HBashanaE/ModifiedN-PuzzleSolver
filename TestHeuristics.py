@@ -67,10 +67,10 @@ def main():
         # print(start)
         # print(goal)
         t1 = time.time()
-        puz = Puzzle('diff')
+        puz = Puzzle('diff',2)
         puz.n = len(start)
         puz.travers(start,goal)
-        puz.traceback(w=False)
+        puz.traceback(w=False,p=False)
         travers_steps = len(puz.moves)
         tot_steps = puz.tot_steps
         t2 = time.time()
@@ -80,10 +80,10 @@ def main():
         # print('Time taken to solve using misplce heuristics: {} seconds'.format(t2 - t1))
 
         t1 = time.time()
-        puz = Puzzle('man')
+        puz = Puzzle('man',2)
         puz.n = len(start)
         puz.travers(start,goal)
-        puz.traceback(w=False)
+        puz.traceback(w=False,p=False)
         travers_steps = len(puz.moves)
         tot_steps = puz.tot_steps
         t2 = time.time()

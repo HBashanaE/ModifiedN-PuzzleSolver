@@ -5,8 +5,9 @@ from queue import PriorityQueue
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class Node:
-    def __init__(self,state,level,fval,prev, move):
+    def __init__(self,state,level,fval,prev, move, blanks):
         """ Initialize the node with the data, level of the node and the calculated fvalue """
+        self.blanks = blanks
         self.prev = prev
         self.move = move
         self.data = state
@@ -23,22 +24,21 @@ class Node:
         """ Generate child nodes from the given node by moving the blank space
         either in the four directions {up,down,left,right} """
         
-        x1,y1,x2,y2 = self.find(self.data,'-',2)
-        val_list1 = [[x1,y1-1],[x1,y1+1],[x1-1,y1],[x1+1,y1]]
-        val_list2 = [[x2,y2-1],[x2,y2+1],[x2-1,y2],[x2+1,y2]]
+
+        possibleMovesCordinates = self.find(self.data,'-',self.blanks)
         move = ['right', 'left', 'down', 'up']
         children = []
+        
         for i in range(4):
-            p, q = val_list1[i]
-            child = self.swap(self.data,x1,y1,p,q)
-            if child is not None:
-                child_node = Node(child,self.level+1,0,self,(self.data[p][q],move[i]))
-                children.append(child_node)
-            p, q = val_list2[i]
-            child = self.swap(self.data,x2,y2,p,q)
-            if child is not None:
-                child_node = Node(child,self.level+1,0,self,(self.data[p][q],move[i]))
-                children.append(child_node)
+            for j in range(self.blanks):
+                # print(possibleMovesCordinates[j:4*j+3])
+                x,y = possibleMovesCordinates[j*4:j*4+4][0]
+                x +=1 
+                p, q = possibleMovesCordinates[j*4:j*4+4][i]
+                child = self.swap(self.data,x,y,p,q)
+                if child is not None:
+                    child_node = Node(child,self.level+1,0,self,(self.data[p][q],move[i]),self.blanks)
+                    children.append(child_node)
         return children
 
     def swap(self,puz,x1,y1,x2,y2):
@@ -70,16 +70,17 @@ class Node:
         for i in range(0,len(self.data)):
             for j in range(0,len(self.data)):
                 if puz[i][j] == x:
-                    val += [i,j]
+                    val += [(i-1,j),(i+1,j),(i,j-1),(i,j+1) ]
                     remain -= 1
                     if not remain:
                         break
         return val
 
 class Puzzle:
-    def __init__(self,h):
+    def __init__(self,h,blanks):
         """ Initialize the puzzle size by the specified size,open and closed lists to empty """
         # self.n = size
+        self.nblanks = blanks
         self.heu = h
         self.open = []
         self.closed = []
@@ -146,7 +147,7 @@ class Puzzle:
         if start == None or goal == None:
             start, goal = self.readInputs()
 
-        start = Node(start,0,0,None,())
+        start = Node(start,0,0,None,(),self.nblanks)
         start.fval = self.f(start,goal, self.heu)
         self.open.append(start)
         self.queue.put(self.to_pq_entry(start))
@@ -169,16 +170,16 @@ class Puzzle:
         l = len(data)
         for row in data:
             formatted_row = ('%s\t'*l)%tuple(row)
+            # print('-'*25)
             print(formatted_row)
-        print()
+        print('-'*7*self.n)
+        # print()
 
-    def traceback(self,w=True):
+    def traceback(self,w=True,p=True):
         state = self.final_state
-        # prev_state = state.prev
         state_list = [state]
         while True:
             prev_state = state.prev
-            # prev_state = prev_state.prev
             if prev_state == None:
                 break
             state_list.append(prev_state)
@@ -188,22 +189,19 @@ class Puzzle:
         moves = []
         for state in state_list:
             moves.append(state.move)
+            if p:
+                self.printPuzzle(state.data)
         self.moves = moves
-            # self.printPuzzle(state.data)
-        # self.printPuzzle(state.data)
-        # print(','.join(map(str, moves[1:])))
+        print(','.join(map(str, moves[1:])))
         if w:
             self.writeLog(','.join(map(str, moves[1:])))
 
 if __name__  == '__main__':
 
-#     puz = Puzzle('man')
-#     puz.travers()
-#     puz.traceback()
-
-    strat = input('Manhattan distance or tile difference?(man or diff): ')
+    strat = "man" #input('Manhattan distance or tile difference?(man or diff): ')
+    blanks = 4
     t1 = time.time()
-    puz = Puzzle(strat)
+    puz = Puzzle(strat,blanks)
     puz.travers()
     puz.traceback()
     t2 = time.time()
